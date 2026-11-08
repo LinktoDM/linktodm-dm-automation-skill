@@ -1,0 +1,2303 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "LinktoDM API",
+  "description": "\nThe LinktoDM API lets you list your connected channels, read and update\nyour contacts, manage custom fields, and send direct messages from your\nown tools and integrations.\n\n## Authentication\n\nTwo credentials are accepted.\n\n**API key** \u2014 generate one in the LinktoDM dashboard under\n**Settings > API** and send it on every request in the `X-API-Key`\nheader. The full key is shown only once at creation \u2014 store it securely.\nKeys can be revoked at any time from the same page. API keys carry every\npermission.\n\n**OAuth 2.0** \u2014 for applications acting on a user's behalf. Send the\naccess token as `Authorization: Bearer <token>`. Tokens are issued by the\nauthorization code flow at `/v1/oauth/authorize` and `/v1/oauth/token`,\nlast one hour, and are renewed with the accompanying refresh token.\nAvailable scopes are `contacts:read`, `contacts:write`, `messages:send`\nand `webhooks:manage`; a request outside the granted scopes returns\n`403`. Contact us to register an application.\n\nAPI access requires the **Pro+** plan on either credential \u2014 a caller on\na lower plan receives a `403`.\n\n## Rate limiting\n\nRequests are throttled per key. When you exceed the limit you receive a\n`429` with a `Retry-After` header (seconds).\n\n## Channels\n\n`GET /v1/channels` lists the Instagram accounts and Facebook pages\nconnected to your workspace. Channels are connected from the LinktoDM\ndashboard \u2014 they cannot be created via the API. Use a channel's `id`\n(`ig-<id>`, `ig-business-<id>` or `fb-page-<id>`) as the `channel_id`\nfilter on other endpoints.\n\n## Contacts\n\nContacts are created by the messaging platform when someone messages\nyour connected account \u2014 they cannot be created via the API. `name`,\n`username` and `picture` are re-synced from the platform and therefore\nread-only; writable fields are `email`, `phone_number` and custom field\nvalues. **Deleting a contact is permanent** and removes its tags and\ncustom field values.\n\nContact list and get responses include `custom_fields`: one object per\nlive custom field (`slug`, `name`, `value`), oldest first. `slug` is the\nstable key; `name` is the display name. `value` is the canonical text\nstored for that contact \u2014 the same string as `fields[slug]` \u2014 or `\"\"`\nwhen the contact has no value. Array fields keep that stored text.\n`fields` (slug to text, stored values only) is unchanged. Soft-deleted\nfields are omitted.\n\n## Sending messages\n\n`POST /v1/contacts/{contact_id}/send_message` returns `202` when the\nmessage is queued \u2014 delivery itself is asynchronous through per-channel\nrate-limited queues. Meta only permits messages within **24 hours of\nthe contact's last inbound message**; a send outside that window is\naccepted by this API but rejected by the platform. Pass an\n`Idempotency-Key` header to make retries safe.\n",
+  "version": "1.0.0"
+ },
+ "paths": {
+  "/v1/channels": {
+   "get": {
+    "tags": [
+     "channels"
+    ],
+    "summary": "List Channels",
+    "description": "List the connected channels (Instagram accounts and Facebook pages).\n\nChannels are connected from the LinktoDM dashboard \u2014 they cannot be\ncreated via the API. Use each channel's `id` as the `channel_id`\nfilter on other endpoints.",
+    "operationId": "list_channels_v1_channels_get",
+    "security": [
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 100,
+       "minimum": 1,
+       "default": 20,
+       "title": "Limit"
+      }
+     },
+     {
+      "name": "offset",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "minimum": 0,
+       "default": 0,
+       "title": "Offset"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PaginationSchema_PublicChannel_"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/v1/me": {
+   "get": {
+    "tags": [
+     "account"
+    ],
+    "summary": "Get Me",
+    "description": "The account this credential belongs to.\n\nDoubles as the connection test for integrations: a `200` means the\ncredential is valid, the plan allows API access, and the account is\nreachable. No scope is required \u2014 a connection must be testable\nwhatever it was granted.",
+    "operationId": "get_me_v1_me_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PublicAccount"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/v1/contacts": {
+   "get": {
+    "tags": [
+     "contacts"
+    ],
+    "summary": "List Contacts",
+    "description": "List contacts with their tags and custom field values.\n\nNewest first by default, so polling for recent contacts works without\npaging through the whole list. `fields` is the slug-keyed map of stored\nvalues. `custom_fields` lists every live custom field (`slug`, `name`,\n`value`), with an empty `value` when the contact has not set it.",
+    "operationId": "list_contacts_v1_contacts_get",
+    "security": [
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 100,
+       "minimum": 1,
+       "default": 20,
+       "title": "Limit"
+      }
+     },
+     {
+      "name": "offset",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "minimum": 0,
+       "default": 0,
+       "title": "Offset"
+      }
+     },
+     {
+      "name": "search",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Case-insensitive match on name, username, email or phone.",
+       "title": "Search"
+      },
+      "description": "Case-insensitive match on name, username, email or phone."
+     },
+     {
+      "name": "channel_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Restrict to one connected channel (e.g. `ig-<id>`, `ig-business-<id>`, `fb-page-<id>`).",
+       "title": "Channel Id"
+      },
+      "description": "Restrict to one connected channel (e.g. `ig-<id>`, `ig-business-<id>`, `fb-page-<id>`)."
+     },
+     {
+      "name": "has_email",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Has Email"
+      }
+     },
+     {
+      "name": "has_phone",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Has Phone"
+      }
+     },
+     {
+      "name": "tag",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "array",
+         "items": {
+          "type": "string"
+         }
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Only contacts carrying at least one of these tags. Repeatable.",
+       "title": "Tag"
+      },
+      "description": "Only contacts carrying at least one of these tags. Repeatable."
+     },
+     {
+      "name": "order_by",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "pattern": "^-?created_at$",
+       "description": "`-created_at` for newest first (default), or `created_at`.",
+       "default": "-created_at",
+       "title": "Order By"
+      },
+      "description": "`-created_at` for newest first (default), or `created_at`."
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PaginationSchema_PublicContact_"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/v1/contacts/{contact_id}": {
+   "get": {
+    "tags": [
+     "contacts"
+    ],
+    "summary": "Get Contact",
+    "description": "Fetch one contact with its tags and custom field values.\n\n`custom_fields` lists every live custom field for the account\n(`slug`, `name`, `value`). `value` matches `fields[slug]` when set\nand is empty otherwise.",
+    "operationId": "get_contact_v1_contacts__contact_id__get",
+    "security": [
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "contact_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Contact Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PublicContact"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "patch": {
+    "tags": [
+     "contacts"
+    ],
+    "summary": "Update Contact",
+    "description": "Update a contact's email, phone number and custom field values.\n\n`name`, `username` and `picture` are read-only \u2014 they are re-synced\nfrom the messaging platform. Custom field values go in `fields`\nkeyed by slug; a null value clears the field.",
+    "operationId": "update_contact_v1_contacts__contact_id__patch",
+    "security": [
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "contact_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Contact Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ContactUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PublicContact"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "tags": [
+     "contacts"
+    ],
+    "summary": "Delete Contact",
+    "description": "Permanently delete a contact with its tags and custom field values.\n\nThis cannot be undone. If the person messages the account again, a\nfresh contact is created by the platform sync.",
+    "operationId": "delete_contact_v1_contacts__contact_id__delete",
+    "security": [
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "contact_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Contact Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DeleteContactResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/v1/contacts/{contact_id}/tags": {
+   "post": {
+    "tags": [
+     "tags"
+    ],
+    "summary": "Add Tags",
+    "description": "Add tags to a contact.\n\nIdempotent \u2014 adding a tag the contact already has is a success, not a\nconflict, so a retried request behaves the same as the first.",
+    "operationId": "add_tags_v1_contacts__contact_id__tags_post",
+    "security": [
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "contact_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Contact Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TagNames"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PublicContact"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/v1/contacts/{contact_id}/tags/remove": {
+   "post": {
+    "tags": [
+     "tags"
+    ],
+    "summary": "Remove Tags",
+    "description": "Remove tags from a contact.\n\nA POST rather than a DELETE with the tag in the path: tag names are\nfree-form and may contain `/` or `#`, which a path segment cannot\ncarry safely. Removing a tag the contact does not have is a no-op.",
+    "operationId": "remove_tags_v1_contacts__contact_id__tags_remove_post",
+    "security": [
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "contact_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Contact Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TagNames"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PublicContact"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/v1/tags": {
+   "get": {
+    "tags": [
+     "tags"
+    ],
+    "summary": "List Tags",
+    "description": "Every tag in use across your contacts, alphabetically.\n\nPowers the tag dropdowns in connected integrations.",
+    "operationId": "list_tags_v1_tags_get",
+    "security": [
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 100,
+       "minimum": 1,
+       "default": 20,
+       "title": "Limit"
+      }
+     },
+     {
+      "name": "offset",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "minimum": 0,
+       "default": 0,
+       "title": "Offset"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PaginationSchema_str_"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/v1/contacts/{contact_id}/send_message": {
+   "post": {
+    "tags": [
+     "messages"
+    ],
+    "summary": "Send Message",
+    "description": "Queue a text message to a contact (202 = accepted for delivery).\n\nDelivery is asynchronous through per-channel rate-limited queues.\nMeta only allows messages within 24 hours of the contact's last\ninbound message; sends outside that window are accepted here but\nrejected by the platform.",
+    "operationId": "send_message_v1_contacts__contact_id__send_message_post",
+    "security": [
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "contact_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Contact Id"
+      }
+     },
+     {
+      "name": "Idempotency-Key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "maxLength": 200
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Optional. Requests with the same key are de-duplicated for about an hour, so a timed-out request can be retried without double-sending.",
+       "title": "Idempotency-Key"
+      },
+      "description": "Optional. Requests with the same key are de-duplicated for about an hour, so a timed-out request can be retried without double-sending."
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SendMessageRequest"
+       }
+      }
+     }
+    },
+    "responses": {
+     "202": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SendMessageResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/v1/custom_fields": {
+   "get": {
+    "tags": [
+     "custom_fields"
+    ],
+    "summary": "List Custom Fields",
+    "description": "List custom field definitions.",
+    "operationId": "list_custom_fields_v1_custom_fields_get",
+    "security": [
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 100,
+       "minimum": 1,
+       "default": 20,
+       "title": "Limit"
+      }
+     },
+     {
+      "name": "offset",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "minimum": 0,
+       "default": 0,
+       "title": "Offset"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PaginationSchema_PublicCustomField_"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "custom_fields"
+    ],
+    "summary": "Create Custom Field",
+    "description": "Create a custom field definition. The slug is generated from the\nname and immutable afterwards.",
+    "operationId": "create_custom_field_v1_custom_fields_post",
+    "security": [
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CustomFieldCreate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PublicCustomField"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/v1/custom_fields/{field_id}": {
+   "patch": {
+    "tags": [
+     "custom_fields"
+    ],
+    "summary": "Update Custom Field",
+    "description": "Update a custom field's name, description or folder (slug and type\nare immutable).",
+    "operationId": "update_custom_field_v1_custom_fields__field_id__patch",
+    "security": [
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "field_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Field Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CustomFieldUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PublicCustomField"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "tags": [
+     "custom_fields"
+    ],
+    "summary": "Delete Custom Field",
+    "description": "Delete a custom field definition. Existing values are kept in\nplace, so restoring the definition restores the data.",
+    "operationId": "delete_custom_field_v1_custom_fields__field_id__delete",
+    "security": [
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "field_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Field Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PublicCustomField"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/v1/webhooks": {
+   "post": {
+    "tags": [
+     "webhooks"
+    ],
+    "summary": "Create Webhook",
+    "description": "Start receiving an event at your endpoint.\n\nRe-registering an identical subscription returns the existing one\nrather than creating a duplicate, so retries are safe.",
+    "operationId": "create_webhook_v1_webhooks_post",
+    "security": [
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/WebhookSubscriptionCreate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/WebhookSubscriptionResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "get": {
+    "tags": [
+     "webhooks"
+    ],
+    "summary": "List Webhooks",
+    "description": "List your registered endpoints, including deactivated ones.",
+    "operationId": "list_webhooks_v1_webhooks_get",
+    "security": [
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 100,
+       "minimum": 1,
+       "default": 20,
+       "title": "Limit"
+      }
+     },
+     {
+      "name": "offset",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "minimum": 0,
+       "default": 0,
+       "title": "Offset"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PaginationSchema_WebhookSubscriptionResponse_"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/v1/webhooks/{subscription_id}": {
+   "delete": {
+    "tags": [
+     "webhooks"
+    ],
+    "summary": "Delete Webhook",
+    "description": "Stop receiving an event. Takes effect on the next event.",
+    "operationId": "delete_webhook_v1_webhooks__subscription_id__delete",
+    "security": [
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "subscription_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Subscription Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DeleteWebhookSubscriptionResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/v1/events": {
+   "get": {
+    "tags": [
+     "events"
+    ],
+    "summary": "List Events",
+    "description": "Recent contact events, newest first.\n\nReturns exactly what a webhook delivery would contain, so this can be\nused to preview an event shape or to backfill after downtime.",
+    "operationId": "list_events_v1_events_get",
+    "security": [
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 100,
+       "minimum": 1,
+       "default": 20,
+       "title": "Limit"
+      }
+     },
+     {
+      "name": "offset",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "minimum": 0,
+       "default": 0,
+       "title": "Offset"
+      }
+     },
+     {
+      "name": "event_type",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Filter to one event type, e.g. `contact.tag_added`.",
+       "title": "Event Type"
+      },
+      "description": "Filter to one event type, e.g. `contact.tag_added`."
+     },
+     {
+      "name": "tag_name",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Tag Name"
+      }
+     },
+     {
+      "name": "field_slug",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Field Slug"
+      }
+     },
+     {
+      "name": "event_name",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "For `flow.custom` \u2014 the Send to Zapier event name.",
+       "title": "Event Name"
+      },
+      "description": "For `flow.custom` \u2014 the Send to Zapier event name."
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PaginationSchema_ContactEventEnvelope_"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "ChannelType": {
+    "type": "string",
+    "enum": [
+     "INSTAGRAM",
+     "FACEBOOK_PAGE"
+    ],
+    "title": "ChannelType"
+   },
+   "ContactEventEnvelope": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "event": {
+      "type": "string",
+      "title": "Event"
+     },
+     "occurred_at": {
+      "type": "string",
+      "title": "Occurred At"
+     },
+     "changed": {
+      "$ref": "#/components/schemas/EventChange"
+     },
+     "event_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Event Name"
+     },
+     "data": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Data",
+      "default": {}
+     },
+     "contact": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Contact"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "event",
+     "occurred_at",
+     "changed",
+     "contact"
+    ],
+    "title": "ContactEventEnvelope",
+    "description": "One event, in the shape delivered to webhooks.\n\n`GET /v1/events` returns exactly this, so the sample records a user\nsees while building an automation match what arrives at runtime."
+   },
+   "ContactFieldType": {
+    "type": "string",
+    "enum": [
+     "TEXT",
+     "NUMBER",
+     "DATE",
+     "DATETIME",
+     "BOOLEAN",
+     "ARRAY"
+    ],
+    "title": "ContactFieldType",
+    "description": "Data type of a custom contact User Field."
+   },
+   "ContactUpdate": {
+    "properties": {
+     "email": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 320
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Email"
+     },
+     "phone_number": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 32
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Phone Number"
+     },
+     "fields": {
+      "anyOf": [
+       {
+        "additionalProperties": {
+         "anyOf": [
+          {
+           "type": "string"
+          },
+          {
+           "type": "null"
+          }
+         ]
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fields"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "ContactUpdate",
+    "description": "Writable contact fields. Platform-synced fields (name, username,\npicture) are rejected \u2014 any unknown key is a 422."
+   },
+   "CustomFieldCreate": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Name"
+     },
+     "type": {
+      "$ref": "#/components/schemas/ContactFieldType",
+      "default": "TEXT"
+     },
+     "description": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 500
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description"
+     },
+     "folder": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 100
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Folder",
+      "default": "User Fields"
+     }
+    },
+    "type": "object",
+    "required": [
+     "name"
+    ],
+    "title": "CustomFieldCreate"
+   },
+   "CustomFieldUpdate": {
+    "properties": {
+     "name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 100,
+        "minLength": 1
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "description": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 500
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description"
+     },
+     "folder": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 100
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Folder"
+     }
+    },
+    "type": "object",
+    "title": "CustomFieldUpdate",
+    "description": "Slug and type are immutable so saved flows keep working."
+   },
+   "DeleteContactResponse": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "deleted": {
+      "type": "boolean",
+      "const": true,
+      "title": "Deleted",
+      "default": true
+     }
+    },
+    "type": "object",
+    "required": [
+     "id"
+    ],
+    "title": "DeleteContactResponse"
+   },
+   "DeleteWebhookSubscriptionResponse": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "deleted": {
+      "type": "boolean",
+      "const": true,
+      "title": "Deleted",
+      "default": true
+     }
+    },
+    "type": "object",
+    "required": [
+     "id"
+    ],
+    "title": "DeleteWebhookSubscriptionResponse"
+   },
+   "EventChange": {
+    "properties": {
+     "tag_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tag Name"
+     },
+     "field_slug": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Field Slug"
+     },
+     "previous_value": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Previous Value"
+     },
+     "new_value": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "New Value"
+     }
+    },
+    "type": "object",
+    "title": "EventChange",
+    "description": "Which part of the contact moved, and from what to what."
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+   },
+   "PaginationSchema_ContactEventEnvelope_": {
+    "properties": {
+     "data": {
+      "items": {
+       "$ref": "#/components/schemas/ContactEventEnvelope"
+      },
+      "type": "array",
+      "title": "Data"
+     },
+     "total": {
+      "type": "integer",
+      "title": "Total"
+     },
+     "limit": {
+      "type": "integer",
+      "title": "Limit"
+     },
+     "offset": {
+      "type": "integer",
+      "title": "Offset"
+     }
+    },
+    "type": "object",
+    "required": [
+     "data",
+     "total",
+     "limit",
+     "offset"
+    ],
+    "title": "PaginationSchema[ContactEventEnvelope]"
+   },
+   "PaginationSchema_PublicChannel_": {
+    "properties": {
+     "data": {
+      "items": {
+       "$ref": "#/components/schemas/PublicChannel"
+      },
+      "type": "array",
+      "title": "Data"
+     },
+     "total": {
+      "type": "integer",
+      "title": "Total"
+     },
+     "limit": {
+      "type": "integer",
+      "title": "Limit"
+     },
+     "offset": {
+      "type": "integer",
+      "title": "Offset"
+     }
+    },
+    "type": "object",
+    "required": [
+     "data",
+     "total",
+     "limit",
+     "offset"
+    ],
+    "title": "PaginationSchema[PublicChannel]"
+   },
+   "PaginationSchema_PublicContact_": {
+    "properties": {
+     "data": {
+      "items": {
+       "$ref": "#/components/schemas/PublicContact"
+      },
+      "type": "array",
+      "title": "Data"
+     },
+     "total": {
+      "type": "integer",
+      "title": "Total"
+     },
+     "limit": {
+      "type": "integer",
+      "title": "Limit"
+     },
+     "offset": {
+      "type": "integer",
+      "title": "Offset"
+     }
+    },
+    "type": "object",
+    "required": [
+     "data",
+     "total",
+     "limit",
+     "offset"
+    ],
+    "title": "PaginationSchema[PublicContact]"
+   },
+   "PaginationSchema_PublicCustomField_": {
+    "properties": {
+     "data": {
+      "items": {
+       "$ref": "#/components/schemas/PublicCustomField"
+      },
+      "type": "array",
+      "title": "Data"
+     },
+     "total": {
+      "type": "integer",
+      "title": "Total"
+     },
+     "limit": {
+      "type": "integer",
+      "title": "Limit"
+     },
+     "offset": {
+      "type": "integer",
+      "title": "Offset"
+     }
+    },
+    "type": "object",
+    "required": [
+     "data",
+     "total",
+     "limit",
+     "offset"
+    ],
+    "title": "PaginationSchema[PublicCustomField]"
+   },
+   "PaginationSchema_WebhookSubscriptionResponse_": {
+    "properties": {
+     "data": {
+      "items": {
+       "$ref": "#/components/schemas/WebhookSubscriptionResponse"
+      },
+      "type": "array",
+      "title": "Data"
+     },
+     "total": {
+      "type": "integer",
+      "title": "Total"
+     },
+     "limit": {
+      "type": "integer",
+      "title": "Limit"
+     },
+     "offset": {
+      "type": "integer",
+      "title": "Offset"
+     }
+    },
+    "type": "object",
+    "required": [
+     "data",
+     "total",
+     "limit",
+     "offset"
+    ],
+    "title": "PaginationSchema[WebhookSubscriptionResponse]"
+   },
+   "PaginationSchema_str_": {
+    "properties": {
+     "data": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Data"
+     },
+     "total": {
+      "type": "integer",
+      "title": "Total"
+     },
+     "limit": {
+      "type": "integer",
+      "title": "Limit"
+     },
+     "offset": {
+      "type": "integer",
+      "title": "Offset"
+     }
+    },
+    "type": "object",
+    "required": [
+     "data",
+     "total",
+     "limit",
+     "offset"
+    ],
+    "title": "PaginationSchema[str]"
+   },
+   "PublicAccount": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "email": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Email"
+     },
+     "plan": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Plan"
+     },
+     "connection_label": {
+      "type": "string",
+      "title": "Connection Label"
+     },
+     "channels_count": {
+      "type": "integer",
+      "title": "Channels Count"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "connection_label",
+     "channels_count"
+    ],
+    "title": "PublicAccount",
+    "description": "Who the current credential belongs to.\n\nDeliberately free of anything secret. Zapier renders\n`connection_label` next to the connected account in a user's app\nlist, and its review guidelines forbid showing API keys, secrets or\nlong opaque ids there."
+   },
+   "PublicChannel": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "channel_type": {
+      "$ref": "#/components/schemas/ChannelType"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "username": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Username"
+     },
+     "profile_picture_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Profile Picture Url"
+     },
+     "followers_count": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Followers Count"
+     },
+     "media_count": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Media Count"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "channel_type"
+    ],
+    "title": "PublicChannel",
+    "description": "A connected messaging channel (Instagram account or Facebook page).\n\n``id`` is the channel id used elsewhere in the API, e.g. the\n``channel_id`` filter on ``GET /v1/contacts`` \u2014 formats: ``ig-<id>``,\n``ig-business-<id>``, ``fb-page-<id>``."
+   },
+   "PublicContact": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "recipient_id": {
+      "type": "string",
+      "title": "Recipient Id"
+     },
+     "email": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Email"
+     },
+     "phone_number": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Phone Number"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "username": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Username"
+     },
+     "picture": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Picture"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Updated At"
+     },
+     "tags": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tags"
+     },
+     "fields": {
+      "anyOf": [
+       {
+        "additionalProperties": {
+         "type": "string"
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fields"
+     },
+     "custom_fields": {
+      "items": {
+       "$ref": "#/components/schemas/PublicContactCustomField"
+      },
+      "type": "array",
+      "title": "Custom Fields",
+      "description": "Live custom fields for this account, oldest first. `value` is the canonical text (the same string as `fields[slug]`), or empty when this contact has no value. Deleted fields are omitted."
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "recipient_id",
+     "created_at",
+     "updated_at"
+    ],
+    "title": "PublicContact"
+   },
+   "PublicContactCustomField": {
+    "properties": {
+     "slug": {
+      "type": "string",
+      "title": "Slug",
+      "description": "Stable key. Unchanged when the field is renamed."
+     },
+     "name": {
+      "type": "string",
+      "title": "Name",
+      "description": "Display name shown in LinktoDM."
+     },
+     "value": {
+      "type": "string",
+      "title": "Value",
+      "description": "Canonical text stored for this contact. Empty when unset. Array fields use that stored text, the same string as `fields[slug]`, not a joined export string.",
+      "default": ""
+     }
+    },
+    "type": "object",
+    "required": [
+     "slug",
+     "name"
+    ],
+    "title": "PublicContactCustomField",
+    "description": "One live custom field and this contact's value for it."
+   },
+   "PublicCustomField": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "slug": {
+      "type": "string",
+      "title": "Slug"
+     },
+     "type": {
+      "$ref": "#/components/schemas/ContactFieldType"
+     },
+     "description": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description"
+     },
+     "folder": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Folder"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Updated At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "name",
+     "slug",
+     "type",
+     "created_at",
+     "updated_at"
+    ],
+    "title": "PublicCustomField"
+   },
+   "SendMessageRequest": {
+    "properties": {
+     "text": {
+      "type": "string",
+      "maxLength": 1000,
+      "minLength": 1,
+      "title": "Text"
+     }
+    },
+    "type": "object",
+    "required": [
+     "text"
+    ],
+    "title": "SendMessageRequest"
+   },
+   "SendMessageResponse": {
+    "properties": {
+     "status": {
+      "type": "string",
+      "const": "queued",
+      "title": "Status",
+      "default": "queued"
+     },
+     "contact_id": {
+      "type": "integer",
+      "title": "Contact Id"
+     },
+     "recipient_id": {
+      "type": "string",
+      "title": "Recipient Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "contact_id",
+     "recipient_id"
+    ],
+    "title": "SendMessageResponse"
+   },
+   "TagNames": {
+    "properties": {
+     "tag_names": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "maxItems": 50,
+      "minItems": 1,
+      "title": "Tag Names"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "tag_names"
+    ],
+    "title": "TagNames",
+    "description": "Tags to add to, or remove from, a contact.\n\nAdd and remove are separate operations rather than a replace-set: a\nreplace would silently strip tags the caller never mentioned, which\nis a data-loss trap when LinktoDM's own flows are writing tags at the\nsame time."
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "ctx": {
+      "type": "object",
+      "title": "Context"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   },
+   "WebhookSubscriptionCreate": {
+    "properties": {
+     "event_type": {
+      "type": "string",
+      "title": "Event Type",
+      "description": "One of the documented event types, e.g. `contact.tag_added`."
+     },
+     "target_url": {
+      "type": "string",
+      "maxLength": 2000,
+      "title": "Target Url",
+      "description": "HTTPS endpoint that will receive the POST."
+     },
+     "tag_name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tag Name",
+      "description": "Only for tag events \u2014 restrict to a single tag."
+     },
+     "field_slug": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 64
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Field Slug",
+      "description": "Only for `contact.field_set` \u2014 restrict to one custom field."
+     },
+     "event_name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 100
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Event Name",
+      "description": "Only for `flow.custom` \u2014 the event name given to a Send to Zapier action inside a flow."
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "event_type",
+     "target_url"
+    ],
+    "title": "WebhookSubscriptionCreate",
+    "description": "What a consumer sends to start receiving an event.\n\nZapier calls this from `performSubscribe`, passing its own\n`bundle.targetUrl` and whichever filter the user picked in the trigger\nsetup."
+   },
+   "WebhookSubscriptionResponse": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "event_type": {
+      "type": "string",
+      "title": "Event Type"
+     },
+     "target_url": {
+      "type": "string",
+      "title": "Target Url"
+     },
+     "tag_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tag Name"
+     },
+     "field_slug": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Field Slug"
+     },
+     "event_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Event Name"
+     },
+     "is_active": {
+      "type": "boolean",
+      "title": "Is Active"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "event_type",
+     "target_url",
+     "is_active",
+     "created_at"
+    ],
+    "title": "WebhookSubscriptionResponse"
+   }
+  },
+  "securitySchemes": {
+   "APIKeyHeader": {
+    "type": "apiKey",
+    "description": "API key generated in the LinktoDM dashboard (Settings > API).",
+    "in": "header",
+    "name": "X-API-Key"
+   },
+   "HTTPBearer": {
+    "type": "http",
+    "description": "OAuth 2.0 access token issued to a connected application.",
+    "scheme": "bearer"
+   }
+  }
+ }
+}

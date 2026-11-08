@@ -1,0 +1,277 @@
+[
+ {
+  "name": "list_automations",
+  "readOnly": true,
+  "destructive": false
+ },
+ {
+  "name": "get_automation_analytics",
+  "readOnly": true,
+  "destructive": false
+ },
+ {
+  "name": "toggle_automation",
+  "readOnly": false,
+  "destructive": false
+ },
+ {
+  "name": "list_flow_automations",
+  "readOnly": true,
+  "destructive": false
+ },
+ {
+  "name": "list_inbox_automations",
+  "readOnly": true,
+  "destructive": false
+ },
+ {
+  "name": "delete_automation",
+  "readOnly": false,
+  "destructive": true
+ },
+ {
+  "name": "list_contacts",
+  "readOnly": true,
+  "destructive": false
+ },
+ {
+  "name": "get_contacts_count",
+  "readOnly": true,
+  "destructive": false
+ },
+ {
+  "name": "get_event_analytics_summary",
+  "readOnly": true,
+  "destructive": false
+ },
+ {
+  "name": "get_top_automations_by_activity",
+  "readOnly": true,
+  "destructive": false
+ },
+ {
+  "name": "get_account_info",
+  "readOnly": true,
+  "destructive": false
+ },
+ {
+  "name": "get_subscription",
+  "readOnly": true,
+  "destructive": false
+ },
+ {
+  "name": "list_channels",
+  "readOnly": true,
+  "destructive": false
+ },
+ {
+  "name": "get_flow_builder_guide",
+  "readOnly": true,
+  "destructive": false
+ },
+ {
+  "name": "get_flow_automation",
+  "readOnly": true,
+  "destructive": false
+ },
+ {
+  "name": "create_flow_automation",
+  "readOnly": false,
+  "destructive": false
+ },
+ {
+  "name": "update_flow_automation",
+  "readOnly": false,
+  "destructive": true
+ },
+ {
+  "name": "get_flow_rewind_status",
+  "readOnly": true,
+  "destructive": false
+ },
+ {
+  "name": "start_flow_automation_rewind",
+  "readOnly": false,
+  "destructive": true
+ },
+ {
+  "name": "get_simple_automation_guide",
+  "readOnly": true,
+  "destructive": false
+ },
+ {
+  "name": "get_simple_automation",
+  "readOnly": true,
+  "destructive": false
+ },
+ {
+  "name": "create_simple_automation",
+  "readOnly": false,
+  "destructive": false
+ },
+ {
+  "name": "update_simple_automation",
+  "readOnly": false,
+  "destructive": true
+ },
+ {
+  "name": "start_simple_automation_rewind",
+  "readOnly": false,
+  "destructive": true
+ },
+ {
+  "name": "list_agents",
+  "readOnly": true,
+  "destructive": false
+ },
+ {
+  "name": "get_agent",
+  "readOnly": true,
+  "destructive": false
+ },
+ {
+  "name": "create_agent",
+  "readOnly": false,
+  "destructive": false
+ },
+ {
+  "name": "update_agent",
+  "readOnly": false,
+  "destructive": false
+ },
+ {
+  "name": "toggle_agent",
+  "readOnly": false,
+  "destructive": false
+ },
+ {
+  "name": "delete_agent",
+  "readOnly": false,
+  "destructive": true
+ },
+ {
+  "name": "update_profile",
+  "readOnly": false,
+  "destructive": false
+ },
+ {
+  "name": "get_message_queue",
+  "readOnly": true,
+  "destructive": false
+ },
+ {
+  "name": "set_message_queue_paused",
+  "readOnly": false,
+  "destructive": false
+ },
+ {
+  "name": "list_contact_fields",
+  "readOnly": true,
+  "destructive": false
+ },
+ {
+  "name": "create_contact_field",
+  "readOnly": false,
+  "destructive": false
+ },
+ {
+  "name": "list_team_members",
+  "readOnly": true,
+  "destructive": false
+ },
+ {
+  "name": "list_api_keys",
+  "readOnly": true,
+  "destructive": false
+ },
+ {
+  "name": "get_conversation_starter",
+  "readOnly": true,
+  "destructive": false
+ },
+ {
+  "name": "set_conversation_starter",
+  "readOnly": false,
+  "destructive": true
+ },
+ {
+  "name": "start_email_change",
+  "readOnly": false,
+  "destructive": false
+ },
+ {
+  "name": "verify_email_change",
+  "readOnly": false,
+  "destructive": true
+ },
+ {
+  "name": "set_primary_account",
+  "readOnly": false,
+  "destructive": false
+ },
+ {
+  "name": "logout_all_devices",
+  "readOnly": false,
+  "destructive": true
+ },
+ {
+  "name": "update_contact_field",
+  "readOnly": false,
+  "destructive": false
+ },
+ {
+  "name": "delete_contact_field",
+  "readOnly": false,
+  "destructive": true
+ },
+ {
+  "name": "invite_team_member",
+  "readOnly": false,
+  "destructive": false
+ },
+ {
+  "name": "update_team_member",
+  "readOnly": false,
+  "destructive": true
+ },
+ {
+  "name": "remove_team_member",
+  "readOnly": false,
+  "destructive": true
+ },
+ {
+  "name": "resend_team_invitation",
+  "readOnly": false,
+  "destructive": false
+ },
+ {
+  "name": "create_api_key",
+  "readOnly": false,
+  "destructive": false
+ },
+ {
+  "name": "revoke_api_key",
+  "readOnly": false,
+  "destructive": true
+ },
+ {
+  "name": "clear_message_queue",
+  "readOnly": false,
+  "destructive": true
+ },
+ {
+  "name": "set_message_queue_speed",
+  "readOnly": false,
+  "destructive": false
+ },
+ {
+  "name": "deactivate_all_automations",
+  "readOnly": false,
+  "destructive": true
+ },
+ {
+  "name": "disconnect_channel",
+  "readOnly": false,
+  "destructive": true
+ }
+]
