@@ -120,36 +120,6 @@
   "destructive": true
  },
  {
-  "name": "list_agents",
-  "readOnly": true,
-  "destructive": false
- },
- {
-  "name": "get_agent",
-  "readOnly": true,
-  "destructive": false
- },
- {
-  "name": "create_agent",
-  "readOnly": false,
-  "destructive": false
- },
- {
-  "name": "update_agent",
-  "readOnly": false,
-  "destructive": false
- },
- {
-  "name": "toggle_agent",
-  "readOnly": false,
-  "destructive": false
- },
- {
-  "name": "delete_agent",
-  "readOnly": false,
-  "destructive": true
- },
- {
   "name": "update_profile",
   "readOnly": false,
   "destructive": false

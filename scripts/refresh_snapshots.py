@@ -4,7 +4,7 @@ Run from a LinktoDM backend checkout (its Python environment active), passing
 this repo's path:
 
     cd /path/to/backend
-    python /path/to/linktodm-skill/scripts/refresh_snapshots.py /path/to/linktodm-skill
+    python /path/to/linktodm-dm-automation-skill/scripts/refresh_snapshots.py /path/to/linktodm-dm-automation-skill
 
 Then run scripts/check_skill.py: it flags docs that mention tools or
 endpoints that no longer exist.
@@ -14,6 +14,17 @@ import asyncio
 import json
 import sys
 from pathlib import Path
+
+# Tools the server has but this skill doesn't document yet (AI agents are
+# hidden from the skill until launch). Remove names here to include them.
+HIDDEN_TOOLS = {
+    "list_agents",
+    "get_agent",
+    "create_agent",
+    "update_agent",
+    "toggle_agent",
+    "delete_agent",
+}
 
 
 def main() -> None:
@@ -28,7 +39,7 @@ def main() -> None:
     (refs / "public-api-openapi.json").write_text(
         json.dumps(public_app.openapi(), indent=1) + "\n",
     )
-    tools = asyncio.run(mcp.list_tools())
+    tools = [t for t in asyncio.run(mcp.list_tools()) if t.name not in HIDDEN_TOOLS]
     (refs / "mcp-tools.json").write_text(
         json.dumps(
             [
