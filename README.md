@@ -62,7 +62,6 @@ claude mcp add --transport http linktodm https://api.linktodm.com/v1/mcp/
 | --- | --- |
 | 💬 **Comment & story to DM** | Reply to comments and story replies with an automatic DM |
 | 🔀 **Multi-step flows** | Build branching conversations that collect info and qualify leads |
-| 🤖 **AI agents** | Auto-like comments and hide abusive or harassing ones |
 | 👥 **Contacts & tags** | Find, tag and segment leads; manage custom fields |
 | ✉️ **Send DMs** | Message contacts from scripts, forms or a CRM via the public API |
 | 🔔 **Webhooks** | Receive events reliably in your own backend |
@@ -103,7 +102,6 @@ skills/linktodm/
 | [connect.md](skills/linktodm/references/connect.md) | Connecting the MCP server per agent; getting an API key |
 | [simple-automations.md](skills/linktodm/references/simple-automations.md) | Comment/story-to-DM automations (MCP) |
 | [flow-automations.md](skills/linktodm/references/flow-automations.md) | Multi-step flows (MCP) |
-| [ai-agents.md](skills/linktodm/references/ai-agents.md) | Auto-like and comment-moderation agents (MCP) |
 | [account-settings.md](skills/linktodm/references/account-settings.md) | Profile, email, team, API keys, queue, conversation starters (MCP) |
 | [public-api.md](skills/linktodm/references/public-api.md) | Public API: auth, limits, endpoints, gotchas |
 | [webhooks.md](skills/linktodm/references/webhooks.md) | Webhook events, payloads, reliable receiving |

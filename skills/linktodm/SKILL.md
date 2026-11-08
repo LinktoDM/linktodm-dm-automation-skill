@@ -1,6 +1,6 @@
 ---
 name: linktodm
-description: Build and run Instagram and Facebook DM automations with LinktoDM. Covers comment-to-DM and story automations, multi-step flows, AI agents that like or hide comments, contacts, tags, custom fields, sending DMs, webhooks and account settings, through the LinktoDM MCP server or the LinktoDM public API. Use when the user mentions LinktoDM, or wants to automate Instagram/Facebook DMs, comments, leads or contacts.
+description: Build and run Instagram and Facebook DM automations with LinktoDM. Covers comment-to-DM and story automations, multi-step flows, contacts, tags, custom fields, sending DMs, webhooks and account settings, through the LinktoDM MCP server or the LinktoDM public API. Use when the user mentions LinktoDM, or wants to automate Instagram/Facebook DMs, comments, leads or contacts.
 metadata:
   version: "0.1.0"
 ---
@@ -35,7 +35,6 @@ both.
 | --- | --- |
 | One DM when someone comments a keyword or replies to a story | [simple-automations.md](references/simple-automations.md) |
 | Several steps: conditions, delays, collecting an email, tags, webhooks, DM keyword replies | [flow-automations.md](references/flow-automations.md) |
-| Auto-like or auto-hide comments that match a description | [ai-agents.md](references/ai-agents.md) |
 | Profile, email, team, API keys, queue, conversation starters, accounts | [account-settings.md](references/account-settings.md) |
 | Code that reads/updates contacts, tags, custom fields or sends DMs | [public-api.md](references/public-api.md) |
 | React to contact changes in another system (webhooks, Zapier-style) | [webhooks.md](references/webhooks.md) |
